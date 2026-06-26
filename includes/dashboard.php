@@ -2,6 +2,7 @@
 defined( 'ABSPATH' ) || exit;
 
 add_action( 'ymk_overview_cards', 'ymk_maintenance_overview_card', 10, 2 );
+add_filter( 'ymk_rules_submenus', 'ymk_maintenance_register_rules_submenu' );
 add_filter( 'ymk_dashboard_sections', 'ymk_maintenance_register_section' );
 add_action( 'ymk_dashboard_render_tab', 'ymk_maintenance_render_tab', 10, 1 );
 add_filter( 'ymk_toggle_module_allowed', 'ymk_maintenance_register_toggle' );
@@ -111,4 +112,62 @@ function ymk_maintenance_render_tab( string $tab ): void {
 function ymk_maintenance_register_toggle( array $allowed ): array {
     $allowed[] = 'ymk_maintenance_active';
     return $allowed;
+}
+
+function ymk_maintenance_register_rules_submenu( array $items ): array {
+    $items[] = [
+        'menu_title' => __( 'Mantenimiento', 'ymk-maintenance' ),
+        'page_title' => __( 'YMK Maintenance', 'ymk-maintenance' ),
+        'slug'       => 'ymk-maintenance',
+        'callback'   => 'ymk_maintenance_rules_page',
+    ];
+    return $items;
+}
+
+function ymk_maintenance_rules_page(): void {
+    $active = get_option( 'ymk_maintenance_active', '0' );
+    $slug   = get_option( 'ymk_maintenance_slug', '' );
+    $url    = get_option( 'ymk_maintenance_url', '' );
+
+    if ( isset( $_GET['settings-updated'] ) ) {
+        echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Ajustes guardados.', 'ymk-maintenance' ) . '</p></div>';
+    }
+    if ( '1' === $active ) {
+        echo '<div class="notice notice-warning"><p><strong>' . esc_html__( 'Modo mantenimiento activo.', 'ymk-maintenance' ) . '</strong> ' . esc_html__( 'Los visitantes no pueden acceder al sitio.', 'ymk-maintenance' ) . '</p></div>';
+    }
+    ?>
+    <div class="wrap">
+        <h1><?php esc_html_e( 'YMK Maintenance', 'ymk-maintenance' ); ?></h1>
+        <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+            <input type="hidden" name="action" value="ymk_maintenance_save">
+            <?php wp_nonce_field( 'ymk_maintenance_save' ); ?>
+            <table class="form-table">
+                <tr>
+                    <th><?php esc_html_e( 'Activar modo mantenimiento', 'ymk-maintenance' ); ?></th>
+                    <td>
+                        <label>
+                            <input type="checkbox" name="ymk_maintenance_active" value="1" <?php checked( '1', $active ); ?>>
+                            <?php esc_html_e( 'Bloquear acceso a visitantes', 'ymk-maintenance' ); ?>
+                        </label>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="ymk_maint_slug2"><?php esc_html_e( 'Slug del artículo', 'ymk-maintenance' ); ?></label></th>
+                    <td>
+                        <input type="text" id="ymk_maint_slug2" name="ymk_maintenance_slug"
+                               value="<?php echo esc_attr( $slug ); ?>" class="regular-text">
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="ymk_maint_url2"><?php esc_html_e( 'URL de redirección', 'ymk-maintenance' ); ?></label></th>
+                    <td>
+                        <input type="url" id="ymk_maint_url2" name="ymk_maintenance_url"
+                               value="<?php echo esc_attr( $url ); ?>" class="regular-text">
+                    </td>
+                </tr>
+            </table>
+            <?php submit_button( __( 'Guardar', 'ymk-maintenance' ) ); ?>
+        </form>
+    </div>
+    <?php
 }
