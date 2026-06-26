@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1] — 2026-06-26
+
+### Added
+- Card en dashboards Child, OO y Extra via `ymk_overview_cards` hook
+- Tab "Mantenimiento" en dashboards via `ymk_dashboard_sections` + `ymk_dashboard_render_tab`
+- Toggle activable desde cualquier dashboard via `ymk_toggle_module_allowed`
+
 ## [1.0.0] — 2026-06-26
 
 ### Added
