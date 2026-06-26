@@ -9,6 +9,17 @@ add_action( 'admin_post_ymk_maintenance_save', function() {
     update_option( 'ymk_maintenance_slug',   sanitize_text_field( wp_unslash( $_POST['ymk_maintenance_slug'] ?? '' ) ) );
     update_option( 'ymk_maintenance_url',    esc_url_raw( wp_unslash( $_POST['ymk_maintenance_url'] ?? '' ) ) );
 
+    $all_roles        = array_keys( ymk_maintenance_all_roles() );
+    $excluded_roles   = array_intersect( (array) ( $_POST['ymk_maintenance_excluded_roles'] ?? [] ), $all_roles );
+    update_option( 'ymk_maintenance_excluded_roles', array_values( $excluded_roles ) );
+
+    $all_bots        = array_keys( ymk_maintenance_all_bots() );
+    $excluded_bots   = array_intersect( (array) ( $_POST['ymk_maintenance_excluded_bots'] ?? [] ), $all_bots );
+    update_option( 'ymk_maintenance_excluded_bots', array_values( $excluded_bots ) );
+
+    update_option( 'ymk_maintenance_block_rest',   ! empty( $_POST['ymk_maintenance_block_rest'] )   ? '1' : '0' );
+    update_option( 'ymk_maintenance_block_xmlrpc', ! empty( $_POST['ymk_maintenance_block_xmlrpc'] ) ? '1' : '0' );
+
     $referer = wp_get_referer() ?: admin_url( 'admin.php?page=ortogest-online&tab=maintenance' );
     wp_safe_redirect( add_query_arg( 'settings-updated', '1', $referer ) );
     exit;

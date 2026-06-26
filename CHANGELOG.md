@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.0] — 2026-06-26
+
+### Added
+- Roles excluidos configurables via checkboxes — `shop_manager` excluido por defecto (compatibilidad OrtoGest ERP)
+- Bots excluidos configurables via checkboxes — lista ampliada con SemrushBot, AhrefsBot, MJ12bot
+- Bloqueo opcional de REST API para usuarios no autenticados
+- Bloqueo opcional de XML-RPC
+- Controles disponibles en los tres dashboards (Child/OO/Extra) y en YMKs Rules
+
 ## [1.0.1] — 2026-06-26
 
 ### Added

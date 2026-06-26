@@ -51,9 +51,13 @@ function ymk_maintenance_register_section( array $sections ): array {
 function ymk_maintenance_render_tab( string $tab ): void {
     if ( 'maintenance' !== $tab ) return;
 
-    $active = get_option( 'ymk_maintenance_active', '0' );
-    $slug   = get_option( 'ymk_maintenance_slug', '' );
-    $url    = get_option( 'ymk_maintenance_url', '' );
+    $active         = get_option( 'ymk_maintenance_active', '0' );
+    $slug           = get_option( 'ymk_maintenance_slug', '' );
+    $url            = get_option( 'ymk_maintenance_url', '' );
+    $excluded_roles = (array) get_option( 'ymk_maintenance_excluded_roles', [ 'administrator', 'editor', 'shop_manager' ] );
+    $excluded_bots  = (array) get_option( 'ymk_maintenance_excluded_bots', array_keys( ymk_maintenance_all_bots() ) );
+    $block_rest     = get_option( 'ymk_maintenance_block_rest', '0' );
+    $block_xmlrpc   = get_option( 'ymk_maintenance_block_xmlrpc', '0' );
 
     ymk_card_open(
         'dashicons-warning',
@@ -84,7 +88,7 @@ function ymk_maintenance_render_tab( string $tab ): void {
         </div>
 
         <div class="ymk-form-row">
-            <label class="ymk-form-label" for="ymk_maint_slug"><?php esc_html_e( 'Slug del artículo', 'ymk-maintenance' ); ?></label>
+            <label class="ymk-form-label" for="ymk_maint_slug"><?php esc_html_e( 'Artículo (slug)', 'ymk-maintenance' ); ?></label>
             <div class="ymk-form-field">
                 <input type="text" id="ymk_maint_slug" name="ymk_maintenance_slug"
                        value="<?php echo esc_attr( $slug ); ?>" class="regular-text">
@@ -98,6 +102,53 @@ function ymk_maintenance_render_tab( string $tab ): void {
                 <input type="url" id="ymk_maint_url" name="ymk_maintenance_url"
                        value="<?php echo esc_attr( $url ); ?>" class="regular-text">
                 <p class="ymk-form-desc"><?php esc_html_e( 'Si se indica, redirige aquí en lugar de mostrar el artículo.', 'ymk-maintenance' ); ?></p>
+            </div>
+        </div>
+
+        <div class="ymk-form-row">
+            <label class="ymk-form-label"><?php esc_html_e( 'Roles que NO se bloquean', 'ymk-maintenance' ); ?></label>
+            <div class="ymk-form-field">
+                <?php foreach ( ymk_maintenance_all_roles() as $role_slug => $role_name ) : ?>
+                    <label style="display:block;margin-bottom:4px;">
+                        <input type="checkbox" name="ymk_maintenance_excluded_roles[]"
+                               value="<?php echo esc_attr( $role_slug ); ?>"
+                               <?php checked( in_array( $role_slug, $excluded_roles, true ) ); ?>>
+                        <?php echo esc_html( $role_name ); ?>
+                        <?php if ( $role_slug === 'shop_manager' ) : ?>
+                            <span style="color:#888;font-size:11px;"><?php esc_html_e( '← recomendado para OrtoGest ERP', 'ymk-maintenance' ); ?></span>
+                        <?php endif; ?>
+                    </label>
+                <?php endforeach; ?>
+                <p class="ymk-form-desc"><?php esc_html_e( 'Los usuarios con estos roles acceden al sitio aunque el mantenimiento esté activo.', 'ymk-maintenance' ); ?></p>
+            </div>
+        </div>
+
+        <div class="ymk-form-row">
+            <label class="ymk-form-label"><?php esc_html_e( 'Bots excluidos del bloqueo', 'ymk-maintenance' ); ?></label>
+            <div class="ymk-form-field">
+                <?php foreach ( ymk_maintenance_all_bots() as $bot_key => $bot_label ) : ?>
+                    <label style="display:inline-block;margin-right:12px;margin-bottom:4px;">
+                        <input type="checkbox" name="ymk_maintenance_excluded_bots[]"
+                               value="<?php echo esc_attr( $bot_key ); ?>"
+                               <?php checked( in_array( $bot_key, $excluded_bots, true ) ); ?>>
+                        <?php echo esc_html( $bot_label ); ?>
+                    </label>
+                <?php endforeach; ?>
+                <p class="ymk-form-desc"><?php esc_html_e( 'Los bots marcados ven el sitio normal (recomendado para SEO).', 'ymk-maintenance' ); ?></p>
+            </div>
+        </div>
+
+        <div class="ymk-form-row">
+            <label class="ymk-form-label"><?php esc_html_e( 'Bloqueos adicionales', 'ymk-maintenance' ); ?></label>
+            <div class="ymk-form-field">
+                <label style="display:block;margin-bottom:4px;">
+                    <input type="checkbox" name="ymk_maintenance_block_rest" value="1" <?php checked( '1', $block_rest ); ?>>
+                    <?php esc_html_e( 'Bloquear REST API para usuarios no autenticados', 'ymk-maintenance' ); ?>
+                </label>
+                <label style="display:block;">
+                    <input type="checkbox" name="ymk_maintenance_block_xmlrpc" value="1" <?php checked( '1', $block_xmlrpc ); ?>>
+                    <?php esc_html_e( 'Bloquear XML-RPC', 'ymk-maintenance' ); ?>
+                </label>
             </div>
         </div>
 
@@ -138,31 +189,45 @@ function ymk_maintenance_rules_page(): void {
     ?>
     <div class="wrap">
         <h1><?php esc_html_e( 'YMK Maintenance', 'ymk-maintenance' ); ?></h1>
+        <?php
+        $excluded_roles = (array) get_option( 'ymk_maintenance_excluded_roles', [ 'administrator', 'editor', 'shop_manager' ] );
+        $excluded_bots  = (array) get_option( 'ymk_maintenance_excluded_bots', array_keys( ymk_maintenance_all_bots() ) );
+        $block_rest     = get_option( 'ymk_maintenance_block_rest', '0' );
+        $block_xmlrpc   = get_option( 'ymk_maintenance_block_xmlrpc', '0' );
+        ?>
         <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
             <input type="hidden" name="action" value="ymk_maintenance_save">
             <?php wp_nonce_field( 'ymk_maintenance_save' ); ?>
             <table class="form-table">
                 <tr>
-                    <th><?php esc_html_e( 'Activar modo mantenimiento', 'ymk-maintenance' ); ?></th>
-                    <td>
-                        <label>
-                            <input type="checkbox" name="ymk_maintenance_active" value="1" <?php checked( '1', $active ); ?>>
-                            <?php esc_html_e( 'Bloquear acceso a visitantes', 'ymk-maintenance' ); ?>
-                        </label>
-                    </td>
+                    <th><?php esc_html_e( 'Activar', 'ymk-maintenance' ); ?></th>
+                    <td><label><input type="checkbox" name="ymk_maintenance_active" value="1" <?php checked( '1', $active ); ?>> <?php esc_html_e( 'Bloquear acceso a visitantes', 'ymk-maintenance' ); ?></label></td>
                 </tr>
                 <tr>
-                    <th><label for="ymk_maint_slug2"><?php esc_html_e( 'Slug del artículo', 'ymk-maintenance' ); ?></label></th>
-                    <td>
-                        <input type="text" id="ymk_maint_slug2" name="ymk_maintenance_slug"
-                               value="<?php echo esc_attr( $slug ); ?>" class="regular-text">
-                    </td>
+                    <th><label for="ymk_maint_slug2"><?php esc_html_e( 'Artículo (slug)', 'ymk-maintenance' ); ?></label></th>
+                    <td><input type="text" id="ymk_maint_slug2" name="ymk_maintenance_slug" value="<?php echo esc_attr( $slug ); ?>" class="regular-text"></td>
                 </tr>
                 <tr>
                     <th><label for="ymk_maint_url2"><?php esc_html_e( 'URL de redirección', 'ymk-maintenance' ); ?></label></th>
+                    <td><input type="url" id="ymk_maint_url2" name="ymk_maintenance_url" value="<?php echo esc_attr( $url ); ?>" class="regular-text"></td>
+                </tr>
+                <tr>
+                    <th><?php esc_html_e( 'Roles excluidos', 'ymk-maintenance' ); ?></th>
+                    <td><?php foreach ( ymk_maintenance_all_roles() as $rs => $rn ) : ?>
+                        <label style="display:block;"><input type="checkbox" name="ymk_maintenance_excluded_roles[]" value="<?php echo esc_attr( $rs ); ?>" <?php checked( in_array( $rs, $excluded_roles, true ) ); ?>> <?php echo esc_html( $rn ); ?></label>
+                    <?php endforeach; ?></td>
+                </tr>
+                <tr>
+                    <th><?php esc_html_e( 'Bots excluidos', 'ymk-maintenance' ); ?></th>
+                    <td><?php foreach ( ymk_maintenance_all_bots() as $bk => $bl ) : ?>
+                        <label style="display:inline-block;margin-right:10px;"><input type="checkbox" name="ymk_maintenance_excluded_bots[]" value="<?php echo esc_attr( $bk ); ?>" <?php checked( in_array( $bk, $excluded_bots, true ) ); ?>> <?php echo esc_html( $bl ); ?></label>
+                    <?php endforeach; ?></td>
+                </tr>
+                <tr>
+                    <th><?php esc_html_e( 'Bloqueos adicionales', 'ymk-maintenance' ); ?></th>
                     <td>
-                        <input type="url" id="ymk_maint_url2" name="ymk_maintenance_url"
-                               value="<?php echo esc_attr( $url ); ?>" class="regular-text">
+                        <label style="display:block;"><input type="checkbox" name="ymk_maintenance_block_rest" value="1" <?php checked( '1', $block_rest ); ?>> <?php esc_html_e( 'Bloquear REST API (no autenticados)', 'ymk-maintenance' ); ?></label>
+                        <label style="display:block;"><input type="checkbox" name="ymk_maintenance_block_xmlrpc" value="1" <?php checked( '1', $block_xmlrpc ); ?>> <?php esc_html_e( 'Bloquear XML-RPC', 'ymk-maintenance' ); ?></label>
                     </td>
                 </tr>
             </table>

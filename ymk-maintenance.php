@@ -3,7 +3,7 @@
  * Plugin Name: YMK Maintenance
  * Plugin URI:  https://github.com/ymikimonokia/ymk-maintenance
  * Description: Modo mantenimiento para WordPress. Muestra artículo CPT con HTTP 503 o redirige a URL externa. Excluye bots, admins y login.
- * Version:     1.0.1
+ * Version:     1.1.0
  * Author:      Agencia Libre
  * Author URI:  https://agencialibre.es
  * License:     Proprietary
@@ -12,7 +12,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'YMK_MAINTENANCE_VERSION', '1.0.1' );
+define( 'YMK_MAINTENANCE_VERSION', '1.1.0' );
 define( 'YMK_MAINTENANCE_DIR', plugin_dir_path( __FILE__ ) );
 define( 'YMK_MAINTENANCE_URL', plugin_dir_url( __FILE__ ) );
 
