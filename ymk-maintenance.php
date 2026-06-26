@@ -24,7 +24,3 @@ require_once YMK_MAINTENANCE_DIR . 'includes/dashboard.php';
 add_action( 'plugins_loaded', [ 'YMK_Maintenance_Updater', 'init' ] );
 add_action( 'plugins_loaded', [ 'YMK_Maintenance_Updater', 'validate_license' ] );
 
-add_filter( 'plugin_action_links_' . plugin_basename( __FILE__ ), function( $links ) {
-    $links[] = '<a href="' . admin_url( 'options-general.php?page=ymk-maintenance' ) . '">' . __( 'Ajustes', 'ymk-maintenance' ) . '</a>';
-    return $links;
-} );
