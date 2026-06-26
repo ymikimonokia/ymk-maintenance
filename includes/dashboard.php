@@ -157,6 +157,101 @@ function ymk_maintenance_render_tab( string $tab ): void {
         </div>
     </form>
     <?php
+
+    // ── Card estadísticas ─────────────────────────────────────────────────────
+    if ( isset( $_GET['stats-reset'] ) ) {
+        echo '<div class="ymk-notice ymk-notice-success">' . esc_html__( 'Contadores reiniciados.', 'ymk-maintenance' ) . '</div>';
+    }
+
+    $stats      = ymk_maintenance_stats_get();
+    $all_roles  = ymk_maintenance_all_roles();
+    $total_blocked = ( $stats['blocked_visitors'] ?? 0 ) + ( $stats['blocked_bots'] ?? 0 );
+    $total_passed  = array_sum( (array) ( $stats['passed_roles'] ?? [] ) ) + ( $stats['passed_bots'] ?? 0 );
+
+    ymk_card_open( 'dashicons-chart-bar', __( 'Estadísticas', 'ymk-maintenance' ), '', [ 'summary' => true,
+        'badge' => $total_blocked
+            ? '<span class="ymk-badge ymk-badge--off">' . sprintf( _n( '%d bloqueo', '%d bloqueos', $total_blocked, 'ymk-maintenance' ), $total_blocked ) . '</span>'
+            : '<span class="ymk-badge ymk-badge--off">' . esc_html__( 'Sin datos', 'ymk-maintenance' ) . '</span>'
+    ] );
+
+    $first = $stats['first_at'] ?? null;
+    $last  = $stats['last_at']  ?? null;
+    ?>
+    <?php if ( $first ) : ?>
+        <p style="color:#888;font-size:12px;margin:0 0 12px;">
+            <?php printf(
+                esc_html__( 'Desde %1$s · Último: %2$s', 'ymk-maintenance' ),
+                esc_html( date_i18n( get_option( 'date_format' ) . ' H:i', strtotime( $first ) ) ),
+                esc_html( date_i18n( get_option( 'date_format' ) . ' H:i', strtotime( $last ) ) )
+            ); ?>
+        </p>
+    <?php endif; ?>
+
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+            <tr style="border-bottom:1px solid #ddd;">
+                <th style="text-align:left;padding:6px 8px;color:#888;font-weight:500;"><?php esc_html_e( 'Grupo', 'ymk-maintenance' ); ?></th>
+                <th style="text-align:right;padding:6px 8px;color:#888;font-weight:500;"><?php esc_html_e( 'Hits', 'ymk-maintenance' ); ?></th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr style="border-bottom:1px solid #f0f0f0;">
+                <td style="padding:6px 8px;">🔴 <?php esc_html_e( 'Visitantes bloqueados', 'ymk-maintenance' ); ?></td>
+                <td style="text-align:right;padding:6px 8px;font-weight:600;"><?php echo (int) ( $stats['blocked_visitors'] ?? 0 ); ?></td>
+            </tr>
+            <tr style="border-bottom:1px solid #f0f0f0;">
+                <td style="padding:6px 8px;">🤖 <?php esc_html_e( 'Bots bloqueados', 'ymk-maintenance' ); ?></td>
+                <td style="text-align:right;padding:6px 8px;font-weight:600;"><?php echo (int) ( $stats['blocked_bots'] ?? 0 ); ?></td>
+            </tr>
+            <tr style="border-bottom:1px solid #f0f0f0;">
+                <td style="padding:6px 8px;">✅ <?php esc_html_e( 'Bots excluidos (SEO)', 'ymk-maintenance' ); ?></td>
+                <td style="text-align:right;padding:6px 8px;font-weight:600;"><?php echo (int) ( $stats['passed_bots'] ?? 0 ); ?></td>
+            </tr>
+            <?php
+            $passed_roles = (array) ( $stats['passed_roles'] ?? [] );
+            if ( ! empty( $passed_roles ) ) :
+                foreach ( $passed_roles as $role_slug => $count ) :
+                    $role_label = $all_roles[ $role_slug ] ?? $role_slug;
+            ?>
+            <tr style="border-bottom:1px solid #f0f0f0;">
+                <td style="padding:6px 8px;padding-left:24px;">👤 <?php echo esc_html( $role_label ); ?></td>
+                <td style="text-align:right;padding:6px 8px;font-weight:600;"><?php echo (int) $count; ?></td>
+            </tr>
+            <?php endforeach; endif; ?>
+            <?php if ( ( $stats['blocked_rest'] ?? 0 ) || get_option( 'ymk_maintenance_block_rest' ) === '1' ) : ?>
+            <tr style="border-bottom:1px solid #f0f0f0;">
+                <td style="padding:6px 8px;">🔌 <?php esc_html_e( 'REST API bloqueada', 'ymk-maintenance' ); ?></td>
+                <td style="text-align:right;padding:6px 8px;font-weight:600;"><?php echo (int) ( $stats['blocked_rest'] ?? 0 ); ?></td>
+            </tr>
+            <?php endif; ?>
+            <?php if ( ( $stats['blocked_xmlrpc'] ?? 0 ) || get_option( 'ymk_maintenance_block_xmlrpc' ) === '1' ) : ?>
+            <tr>
+                <td style="padding:6px 8px;">🔌 <?php esc_html_e( 'XML-RPC bloqueado', 'ymk-maintenance' ); ?></td>
+                <td style="text-align:right;padding:6px 8px;font-weight:600;"><?php echo (int) ( $stats['blocked_xmlrpc'] ?? 0 ); ?></td>
+            </tr>
+            <?php endif; ?>
+        </tbody>
+        <tfoot>
+            <tr style="border-top:2px solid #ddd;background:#f9f9f9;">
+                <td style="padding:8px;font-weight:600;"><?php esc_html_e( 'Total bloqueados', 'ymk-maintenance' ); ?></td>
+                <td style="text-align:right;padding:8px;font-weight:700;font-size:15px;"><?php echo $total_blocked; ?></td>
+            </tr>
+            <tr style="background:#f9f9f9;">
+                <td style="padding:4px 8px 8px;font-weight:600;"><?php esc_html_e( 'Total pasaron', 'ymk-maintenance' ); ?></td>
+                <td style="text-align:right;padding:4px 8px 8px;font-weight:700;font-size:15px;"><?php echo $total_passed; ?></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="margin-top:12px;">
+        <input type="hidden" name="action" value="ymk_maintenance_reset_stats">
+        <?php wp_nonce_field( 'ymk_maintenance_reset_stats' ); ?>
+        <button type="submit" class="ymk-btn ymk-btn-secondary ymk-btn-sm"
+                onclick="return confirm('<?php esc_attr_e( '¿Reiniciar todos los contadores?', 'ymk-maintenance' ); ?>')">
+            <?php esc_html_e( 'Reiniciar contadores', 'ymk-maintenance' ); ?>
+        </button>
+    </form>
+    <?php
     ymk_card_close();
 }
 

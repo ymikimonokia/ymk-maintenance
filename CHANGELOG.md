@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.2.0] — 2026-06-26
+
+### Added
+- Estadísticas de bloqueos por grupo: visitantes, bots bloqueados, bots excluidos (SEO), roles por tipo, REST y XML-RPC
+- Desglose de roles que pasaron (ej. cuántos shop_manager accedieron)
+- Fechas de primer y último bloqueo registrado
+- Totales de bloqueados y pasaron
+- Botón reiniciar contadores con confirmación
+- `includes/stats.php` — módulo de contadores con `get`, `increment` y `reset`
+
 ## [1.1.0] — 2026-06-26
 
 ### Added

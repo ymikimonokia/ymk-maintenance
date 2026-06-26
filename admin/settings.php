@@ -25,6 +25,15 @@ add_action( 'admin_post_ymk_maintenance_save', function() {
     exit;
 } );
 
+add_action( 'admin_post_ymk_maintenance_reset_stats', function() {
+    check_admin_referer( 'ymk_maintenance_reset_stats' );
+    if ( ! current_user_can( 'manage_options' ) ) wp_die( 'No autorizado' );
+    ymk_maintenance_stats_reset();
+    $referer = wp_get_referer() ?: admin_url( 'admin.php?page=ortogest-online&tab=maintenance' );
+    wp_safe_redirect( add_query_arg( 'stats-reset', '1', $referer ) );
+    exit;
+} );
+
 add_action( 'admin_post_ymk_maintenance_save_license', function() {
     check_admin_referer( 'ymk_maintenance_save_license' );
     if ( ! current_user_can( 'manage_options' ) ) wp_die( 'No autorizado' );

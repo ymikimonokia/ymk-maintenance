@@ -11,19 +11,30 @@ function ymk_maintenance_boot() {
     // Siempre excluir: login y panel admin
     if ( $pagenow === 'wp-login.php' || is_admin() ) return;
 
-    // Excluir roles configurados
+    // Excluir roles configurados — registrar paso
     $excluded_roles = get_option( 'ymk_maintenance_excluded_roles', [ 'administrator', 'editor', 'shop_manager' ] );
     foreach ( (array) $excluded_roles as $role ) {
-        if ( current_user_can( $role ) ) return;
+        if ( current_user_can( $role ) ) {
+            ymk_maintenance_stats_increment( 'passed_roles', $role );
+            return;
+        }
     }
 
-    // Excluir bots configurados
-    if ( ymk_maintenance_is_excluded_bot() ) return;
+    // Excluir bots configurados — registrar paso o bloqueo
+    $bot_result = ymk_maintenance_check_bot();
+    if ( $bot_result === 'excluded' ) {
+        ymk_maintenance_stats_increment( 'passed_bots' );
+        return;
+    }
+    if ( $bot_result === 'blocked' ) {
+        ymk_maintenance_stats_increment( 'blocked_bots' );
+    }
 
     // Bloquear REST API si está marcado
     if ( get_option( 'ymk_maintenance_block_rest', '0' ) === '1' ) {
         add_filter( 'rest_authentication_errors', function( $result ) {
             if ( ! is_user_logged_in() ) {
+                ymk_maintenance_stats_increment( 'blocked_rest' );
                 return new WP_Error( 'maintenance', __( 'Sitio en mantenimiento.', 'ymk-maintenance' ), [ 'status' => 503 ] );
             }
             return $result;
@@ -32,8 +43,14 @@ function ymk_maintenance_boot() {
 
     // Bloquear XML-RPC si está marcado
     if ( get_option( 'ymk_maintenance_block_xmlrpc', '0' ) === '1' ) {
-        add_filter( 'xmlrpc_enabled', '__return_false' );
+        add_filter( 'xmlrpc_enabled', function( $enabled ) {
+            ymk_maintenance_stats_increment( 'blocked_xmlrpc' );
+            return false;
+        } );
     }
+
+    // Visitante normal bloqueado
+    ymk_maintenance_stats_increment( 'blocked_visitors' );
 
     $url = get_option( 'ymk_maintenance_url', '' );
     if ( ! empty( $url ) ) {
@@ -44,33 +61,35 @@ function ymk_maintenance_boot() {
     add_action( 'wp_loaded', 'ymk_maintenance_render' );
 }
 
-function ymk_maintenance_is_excluded_bot(): bool {
-    $all_bots = ymk_maintenance_all_bots();
-    $excluded = get_option( 'ymk_maintenance_excluded_bots', array_keys( $all_bots ) );
-    $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
-    foreach ( (array) $excluded as $bot_key ) {
-        $pattern = $all_bots[ $bot_key ] ?? $bot_key;
-        if ( strpos( $ua, $pattern ) !== false ) return true;
+function ymk_maintenance_check_bot(): string {
+    $all_bots      = ymk_maintenance_all_bots();
+    $excluded_keys = get_option( 'ymk_maintenance_excluded_bots', array_keys( $all_bots ) );
+    $ua            = $_SERVER['HTTP_USER_AGENT'] ?? '';
+
+    foreach ( $all_bots as $key => $pattern ) {
+        if ( strpos( $ua, $pattern ) !== false ) {
+            return in_array( $key, (array) $excluded_keys, true ) ? 'excluded' : 'blocked';
+        }
     }
-    return false;
+    return 'human';
 }
 
 function ymk_maintenance_all_bots(): array {
     return [
-        'googlebot'    => 'Googlebot',
-        'bingbot'      => 'Bingbot',
-        'bingpreview'  => 'BingPreview',
-        'msnbot'       => 'msnbot',
-        'gtmetrix'     => 'GTmetrix',
-        'lighthouse'   => 'Chrome-Lighthouse',
-        'pagespeed'    => 'Google PageSpeed Insights',
-        'slurp'        => 'slurp',
-        'askjeeves'    => 'Ask Jeeves/Teoma',
-        'baidu'        => 'Baidu',
-        'duckduckbot'  => 'DuckDuckBot',
-        'semrush'      => 'SemrushBot',
-        'ahrefsbot'    => 'AhrefsBot',
-        'mj12bot'      => 'MJ12bot',
+        'googlebot'   => 'Googlebot',
+        'bingbot'     => 'Bingbot',
+        'bingpreview' => 'BingPreview',
+        'msnbot'      => 'msnbot',
+        'gtmetrix'    => 'GTmetrix',
+        'lighthouse'  => 'Chrome-Lighthouse',
+        'pagespeed'   => 'Google PageSpeed Insights',
+        'slurp'       => 'slurp',
+        'askjeeves'   => 'Ask Jeeves/Teoma',
+        'baidu'       => 'Baidu',
+        'duckduckbot' => 'DuckDuckBot',
+        'semrush'     => 'SemrushBot',
+        'ahrefsbot'   => 'AhrefsBot',
+        'mj12bot'     => 'MJ12bot',
     ];
 }
 
