@@ -9,6 +9,9 @@ add_filter( 'ymk_toggle_module_allowed', 'ymk_maintenance_register_toggle' );
 
 function ymk_maintenance_overview_card( string $page_url, array $tags ): void {
     $active = '1' === get_option( 'ymk_maintenance_active', '0' );
+    $stats  = ymk_maintenance_stats_get();
+    $total_blocked = ( $stats['blocked_visitors'] ?? 0 ) + ( $stats['blocked_bots'] ?? 0 );
+    $total_passed  = array_sum( (array) ( $stats['passed_roles'] ?? [] ) ) + ( $stats['passed_bots'] ?? 0 );
 
     $badge = $active
         ? '<span class="ymk-badge" style="background:#d63638;color:#fff">' . esc_html__( 'Activo', 'ymk-maintenance' ) . '</span>'
@@ -31,11 +34,15 @@ function ymk_maintenance_overview_card( string $page_url, array $tags ): void {
             <span class="ymk-toggle-track"></span>
         </label>
     </form>
-    <?php if ( $active ) : ?>
-        <a href="<?php echo esc_url( add_query_arg( 'tab', 'maintenance', $page_url ) ); ?>" class="ymk-card-link">
-            <?php esc_html_e( 'Configurar', 'ymk-maintenance' ); ?> →
-        </a>
+    <?php if ( $total_blocked || $total_passed ) : ?>
+    <div style="margin-top:8px;font-size:12px;color:#666;display:flex;gap:12px;">
+        <span>🔴 <?php echo $total_blocked; ?> <?php esc_html_e( 'bloqueados', 'ymk-maintenance' ); ?></span>
+        <span>✅ <?php echo $total_passed; ?> <?php esc_html_e( 'pasaron', 'ymk-maintenance' ); ?></span>
+    </div>
     <?php endif; ?>
+    <a href="<?php echo esc_url( add_query_arg( 'tab', 'maintenance', $page_url ) ); ?>" class="ymk-card-link">
+        <?php esc_html_e( 'Configurar', 'ymk-maintenance' ); ?> →
+    </a>
     <?php
     ymk_card_close();
 }
@@ -158,21 +165,18 @@ function ymk_maintenance_render_tab( string $tab ): void {
     </form>
     <?php
 
-    // ── Card estadísticas ─────────────────────────────────────────────────────
+    // ── Estadísticas (dentro del mismo card de configuración) ─────────────────
     if ( isset( $_GET['stats-reset'] ) ) {
         echo '<div class="ymk-notice ymk-notice-success">' . esc_html__( 'Contadores reiniciados.', 'ymk-maintenance' ) . '</div>';
     }
 
-    $stats      = ymk_maintenance_stats_get();
-    $all_roles  = ymk_maintenance_all_roles();
+    $stats         = ymk_maintenance_stats_get();
+    $all_roles     = ymk_maintenance_all_roles();
     $total_blocked = ( $stats['blocked_visitors'] ?? 0 ) + ( $stats['blocked_bots'] ?? 0 );
     $total_passed  = array_sum( (array) ( $stats['passed_roles'] ?? [] ) ) + ( $stats['passed_bots'] ?? 0 );
 
-    ymk_card_open( 'dashicons-chart-bar', __( 'Estadísticas', 'ymk-maintenance' ), '', [ 'summary' => true,
-        'badge' => $total_blocked
-            ? '<span class="ymk-badge ymk-badge--off">' . sprintf( _n( '%d bloqueo', '%d bloqueos', $total_blocked, 'ymk-maintenance' ), $total_blocked ) . '</span>'
-            : '<span class="ymk-badge ymk-badge--off">' . esc_html__( 'Sin datos', 'ymk-maintenance' ) . '</span>'
-    ] );
+    echo '<hr style="margin:20px 0;">';
+    echo '<h3 style="margin:0 0 12px;">' . esc_html__( 'Estadísticas de bloqueos', 'ymk-maintenance' ) . '</h3>';
 
     $first = $stats['first_at'] ?? null;
     $last  = $stats['last_at']  ?? null;
@@ -254,6 +258,7 @@ function ymk_maintenance_render_tab( string $tab ): void {
     <?php
     ymk_card_close();
 }
+
 
 function ymk_maintenance_register_toggle( array $allowed ): array {
     $allowed[] = 'ymk_maintenance_active';
